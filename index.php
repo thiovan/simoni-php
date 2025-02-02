@@ -46,7 +46,15 @@ function createComplaint($conn, $whatsapp, $email, $description, $location, $ima
   // Simpan lampiran foto
   if (!empty($images['name'][0])) {
     for ($i = 0; $i < count($images['name']); $i++) {
-      $imageName = $ticket . '-' . '0' . '_' . ($i + 1) . '.' . pathinfo($images['name'][$i], PATHINFO_EXTENSION); // Buat nama file gambar
+
+      // Periksa apakah file yang diunggah adalah gambar
+      $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
+      $ext = pathinfo($images['name'][$i], PATHINFO_EXTENSION);
+      if (!in_array($ext, $allowTypes)) {
+        continue;
+      }
+
+      $imageName = $ticket . '-' . '0' . '_' . ($i + 1) . '.' . $ext;
       $imagePath = 'uploads/' . $imageName;
 
       // Simpan lampiran foto ke direktori

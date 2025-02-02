@@ -30,7 +30,15 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
   if (!empty($_FILES['images']['name'][0])) {
     $images = $_FILES['images'];
     for ($i = 0; $i < count($images['name']); $i++) {
-      $imageName = $ticket . '-' . $status_id . '_' . ($i + 1) . '.' . pathinfo($images['name'][$i], PATHINFO_EXTENSION);
+
+      // Periksa apakah file yang diunggah adalah gambar
+      $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
+      $ext = pathinfo($images['name'][$i], PATHINFO_EXTENSION);
+      if (!in_array($ext, $allowTypes)) {
+        continue;
+      }
+      
+      $imageName = $ticket . '-' . $status_id . '_' . ($i + 1) . '.' . $ext;
       $imagePath = 'uploads/' . $imageName;
 
       // Simpan lampiran foto ke direktori
