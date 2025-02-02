@@ -1,4 +1,9 @@
 <?php
+// Jika file ini diakses langsung, maka redirek ke halaman index
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) {
+    header("Location: index.php");
+    exit;
+}
 
 // Konfigurasi database
 define('DB_HOST', 'localhost'); // Ganti dengan host database Anda
