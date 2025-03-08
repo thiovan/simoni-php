@@ -96,13 +96,13 @@ for ($i = 0; $i < count($complaints); $i++) {
       <table class="table table-bordered mt-3">
         <thead>
           <tr>
-            <th class="text-center">No</th>
-            <th class="text-center">Waktu</th>
-            <th class="text-center">Kode Tiket</th>
-            <th class="text-center">Deskripsi</th>
-            <th class="text-center">Lokasi</th>
-            <th class="text-center">Status Terakhir</th>
-            <th class="text-center">Opsi</th>
+            <th class="text-center align-middle">No</th>
+            <th class="text-center align-middle">Waktu</th>
+            <th class="text-center align-middle">Kode Tiket</th>
+            <th class="text-center align-middle">Deskripsi</th>
+            <th class="text-center align-middle">Lokasi</th>
+            <th class="text-center align-middle">Status Terakhir</th>
+            <th class="text-center align-middle">Opsi</th>
           </tr>
         </thead>
         <tbody>
@@ -115,9 +115,23 @@ for ($i = 0; $i < count($complaints); $i++) {
               <td class="text-center"><?php echo htmlspecialchars(mb_strimwidth($complaint['location'], 0, 50, '...')); ?></td>
               <td class="text-center"><?php echo ucwords($complaint['last_status']); ?></td>
               <td class="text-center">
-                <a href="detail.php?ticket=<?php echo $complaint['ticket']; ?>" class="btn btn-primary btn-sm" target="_blank"><i class="bi bi-eye"></i> Detail</a>
-                <a href="https://api.whatsapp.com/send?phone=<?php echo preg_replace('/^0/', '62', $complaint['whatsapp']); ?>&text=Halo%2C+saya+menghubungi+anda+terkait+aduan+<?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-success btn-sm" target="_blank"><i class="bi bi-whatsapp"></i> WhatsApp</a>
-                <a href="mailto:<?php echo $complaint['email']; ?>?subject=Aduan: <?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-info btn-sm" target="_blank"><i class="bi bi-envelope"></i> Email</a>
+
+                <div class="row row-cols-2 g-2">
+                  <div class="col">
+                    <a href="detail.php?ticket=<?php echo $complaint['ticket']; ?>" class="btn btn-primary btn-sm w-100" target="_blank"><i class="bi bi-pencil"></i> Input</a>
+                  </div>
+                  <div class="col">
+                    <a href="https://api.whatsapp.com/send?phone=<?php echo preg_replace('/^0/', '62', $complaint['whatsapp']); ?>&text=Halo%2C+saya+menghubungi+anda+terkait+aduan+<?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-success btn-sm w-100" target="_blank"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+                  </div>
+                  <div class="col">
+                    <a href="mailto:<?php echo $complaint['email']; ?>?subject=Aduan: <?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-info btn-sm w-100" target="_blank"><i class="bi bi-envelope"></i> Email</a>
+                  </div>
+                  <div class="col">
+                    <a href="print.php/?id=<?php echo $complaint['id']; ?>" class="btn btn-secondary btn-sm w-100" target="_blank"><i class="bi bi-printer"></i> Cetak</a>
+                  </div>
+                </div>
+
+                <a href="delete.php?id=<?php echo $complaint['id']; ?>" class="btn btn-danger btn-sm w-100 mt-2" onclick="return confirm('Apakah Anda yakin ingin menghapus data aduan ini?')"><i class="bi bi-trash"></i> Hapus</a>
               </td>
             </tr>
           <?php } ?>
