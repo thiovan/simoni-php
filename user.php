@@ -11,58 +11,37 @@ try {
   die("Koneksi gagal: " . $e->getMessage());
 }
 
-// Ambil jumlah aduan
-if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints");
-} else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE officer_id = :officer_id");
-  $stmt->bindParam(':officer_id', $_SESSION['user_id']);
+if ($_SESSION['user_role'] != 'admin') {
+  header("Location: dashboard.php");
+  exit();
 }
-$stmt->execute();
-$complaint_total = $stmt->fetchColumn();
 
-// Ambil jumlah aduan yang masih dalam proses penanganan
-if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3)");
-} else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3) AND officer_id = :officer_id");
-  $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-}
+// Ambil data semua pengguna
+$stmt = $conn->prepare("SELECT * FROM users");
 $stmt->execute();
-$complaint_pending = $stmt->fetchColumn();
+$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Ambil jumlah aduan yang sudah selesai
-if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4");
-} else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4 AND officer_id = :officer_id");
-  $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-}
-$stmt->execute();
-$complaint_closed = $stmt->fetchColumn();
+if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['fullname']) && isset($_POST['role'])) {
+  // Ambil data dari form
+  $username = $_POST['username'];
+  $password = $_POST['password'];
+  $fullname = $_POST['fullname'];
+  $role = $_POST['role'];
 
-// Ambil data aduan terakhir 6 bulan
-$currentYear = date('Y');
-$currentMonth = date('n');
-$complaint_last_6_month = array();
-for ($i = 0; $i < 6; $i++) {
-  if ($_SESSION['user_role'] == 'admin') {
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year");
-  } else {
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year AND officer_id = :officer_id");
-    $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-  }
-  $stmt->bindParam(':month', $currentMonth);
-  $stmt->bindParam(':year', $currentYear);
+  // Enkripsi password
+  $password = password_hash($password, PASSWORD_DEFAULT);
+
+  // Simpan data pengguna ke database
+  $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, role) VALUES (:username, :password, :fullname, :role)");
+  $stmt->bindParam(':username', $username); 
+  $stmt->bindParam(':password', $password);
+  $stmt->bindParam(':fullname', $fullname);
+  $stmt->bindParam(':role', $role);
   $stmt->execute();
-  $months = array("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember");
-  $monthName = $months[$currentMonth - 1];
-  $complaint_last_6_month[$monthName . ' ' . $currentYear] = $stmt->fetchColumn();
-  $currentMonth--;
-  if ($currentMonth == 0) {
-    $currentMonth = 12;
-    $currentYear--;
-  }
+
+  // Redirect ke halaman user.php
+  header("Location: user.php");
+  exit();
 }
 
 ?>
@@ -95,7 +74,7 @@ for ($i = 0; $i < 6; $i++) {
     <hr>
     <ul class="nav nav-pills flex-column mb-auto">
       <li class="nav-item">
-        <a href="dashboard.php" class="nav-link active bg-danger" aria-current="page">
+        <a href="dashboard.php" class="nav-link link-body-emphasis" aria-current="page">
           <i class="bi bi-house-door pe-none me-2"></i>
           Dashboard
         </a>
@@ -107,7 +86,7 @@ for ($i = 0; $i < 6; $i++) {
         </a>
       </li>
       <li class="<?php echo $_SESSION['user_role'] != 'admin' ? 'd-none' : ''; ?>">
-        <a href="user.php" class="nav-link link-body-emphasis">
+        <a href="user.php" class="nav-link active bg-danger">
           <i class="bi bi-people pe-none me-2"></i>
           Kelola Pengguna
         </a>
@@ -167,42 +146,69 @@ for ($i = 0; $i < 6; $i++) {
 
       <div class="card my-3 shadow-sm">
         <div class="card-body">
-          <h4 class="card-title text-center mb-0">DASHBOARD</h4>
+          <h4 class="card-title text-center mb-0">KELOLA PENGGUNA</h4>
         </div>
       </div>
 
-      <div class="row">
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Masuk</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_total; ?></p>
+      <div class="card my-4">
+        <div class="card-header">
+          <form action="user.php" method="post">
+            <h5>Tambah Pengguna</h5>
+            <div class="row">
+              <div class="col col-12 col-md-6 mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" required>
+              </div>
+              <div class="col col-12 col-md-6 mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" required>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Diproses</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_pending; ?></p>
+            <div class="row">
+              <div class="col col-12 col-md-6 mb-3">
+                <label class="form-label">Nama</label>
+                <input type="text" class="form-control" name="fullname" required>
+              </div>
+              <div class="col col-12 col-md-6 mb-3">
+                <label class="form-label">Peran</label>
+                <select class="form-select" name="role" required>
+                  <option value="admin">Admin</option>
+                  <option value="officer">Officer</option>
+                </select>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Selesai</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_closed; ?></p>
+            <div class="row">
+              <div class="col col-12">
+                <button type="submit" class="btn btn-primary btn-secondary w-100">Tambah Pengguna</button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
-      </div>
-
-      <div class="card my-3 shadow-sm">
         <div class="card-body">
-          <canvas class="w-100" id="chart" style="height: 350px;"></canvas>
+          <div class="table-responsive">
+            <table class="table table-bordered mt-3">
+              <thead>
+                <tr>
+                  <th class="text-center align-middle">No</th>
+                  <th class="text-center align-middle">Username</th>
+                  <th class="text-center align-middle">Nama</th>
+                  <th class="text-center align-middle">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($users as $index => $user) { ?>
+                  <tr>
+                    <td class="text-center"><?php echo $index + 1; ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars($user['username']); ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars($user['fullname']); ?></td>
+                    <td class="text-center">
+                      <span class="badge rounded-pill text-bg-danger"><?php echo htmlspecialchars($user['role']); ?></span>
+                    </td>
+                  </tr>
+                <?php } ?>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -236,28 +242,6 @@ for ($i = 0; $i < 6; $i++) {
           toggle: false
         });
         collapse.show();
-      }
-    });
-
-    const ctx = document.getElementById('chart');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: <?php echo json_encode(array_keys($complaint_last_6_month)); ?>,
-        datasets: [{
-          label: 'Jumlah Aduan',
-          data: <?php echo json_encode(array_values($complaint_last_6_month)); ?>,
-          borderWidth: 1,
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          borderColor: 'rgba(255, 99, 132, 1)'
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
       }
     });
   </script>

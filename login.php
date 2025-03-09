@@ -38,6 +38,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
       $_SESSION['user_id'] = $row['id'];
       $_SESSION['user_username'] = $row['username'];
       $_SESSION['user_fullname'] = $row['fullname'];
+      $_SESSION['user_role'] = $row['role'];
 
       // redirect user ke halaman dashboard
       header("Location: dashboard.php");

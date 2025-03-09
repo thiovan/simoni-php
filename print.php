@@ -15,10 +15,16 @@ if (isset($_GET['id'])) {
   $id = $_GET['id'];
 
   // Buat query untuk mengambil data aduan
-  $stmt = $conn->prepare("SELECT * FROM complaints WHERE id = :id");
+  $stmt = $conn->prepare("SELECT c.*, u.fullname AS officer FROM complaints c LEFT JOIN users u ON c.officer_id = u.id WHERE c.id = :id");
   $stmt->bindParam(':id', $id);
   $stmt->execute();
   $complaint = $stmt->fetch(PDO::FETCH_ASSOC);
+
+  // Buat query untuk mengambil data lampiran foto
+  $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'complaint' AND source_id = :source_id");
+  $stmt->bindParam(':source_id', $complaint['id']);
+  $stmt->execute();
+  $complaint['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   // Cek jika aduan ada
   if ($complaint) {
@@ -28,80 +34,103 @@ if (isset($_GET['id'])) {
     $stmt->execute();
     $histories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Buat query untuk mengambil data lampiran foto
-    $stmt = $conn->prepare("SELECT * FROM images WHERE history_id = :history_id");
-    $stmt->bindParam(':history_id', $histories[0]['id']);
-    $stmt->execute();
-    $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($histories as $key => $history) {
+      // Buat query untuk mengambil data lampiran foto
+      $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'history' AND source_id = :source_id");
+      $stmt->bindParam(':source_id', $history['id']);
+      $stmt->execute();
+      $histories[$key]['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-    // Tampilkan rincian aduan
-    ?>
+?>
     <html>
-      <head>
-        <title>Rincian Aduan</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-          }
-          table {
-            border-collapse: collapse;
-          }
-          th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-          }
-        </style>
-        <script>
-          window.onload = function() {
-            window.print();
-          }
-        </script>
-      </head>
-      <body>
-        <h1>Rincian Aduan</h1>
-        <table>
-          <tr>
-            <th style="text-align: left;">No. Tiket</th>
-            <td><?php echo $complaint['ticket']; ?></td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Tanggal</th>
-            <td><?php echo date('d M Y, H:i', strtotime($complaint['created_at'])); ?></td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Pelapor</th>
-            <td><?php echo $complaint['whatsapp']; ?> (<?php echo $complaint['email']; ?>)</td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Deskripsi</th>
-            <td><?php echo $complaint['description']; ?></td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Lokasi</th>
-            <td><?php echo $complaint['location']; ?></td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Progress Aduan</th>
-            <td>
-              <ul>
-                <?php foreach ($histories as $index => $history) { ?>
-                  <li><?php echo empty($history['notes']) && $index === 0 ? "Aduan masuk." : $history['notes']; ?> (<?php echo date('d M Y, H:i', strtotime($history['created_at'])); ?>)</li>
-                <?php } ?>
-              </ul>
-            </td>
-          </tr>
-          <tr>
-            <th style="text-align: left;">Lampiran Foto</th>
-            <td>
-              <?php foreach ($images as $image) { ?>
-                <img src="/simoni/uploads/<?php echo $image['filename']; ?>" width="100" height="100">
+
+    <head>
+      <title>Rincian Aduan</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+        }
+
+        table {
+          border-collapse: collapse;
+        }
+
+        th,
+        td {
+          border: 1px solid #ddd;
+          padding: 10px;
+        }
+      </style>
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      </script>
+    </head>
+
+    <body>
+      <h1>Rincian Aduan</h1>
+      <table>
+        <tr>
+          <th style="text-align: left;">No. Tiket</th>
+          <td><?php echo $complaint['ticket']; ?></td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Tanggal</th>
+          <td><?php echo date('d M Y, H:i', strtotime($complaint['created_at'])); ?></td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Pelapor</th>
+          <td><?php echo $complaint['whatsapp']; ?> (<?php echo $complaint['email']; ?>)</td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Deskripsi</th>
+          <td><?php echo $complaint['description']; ?></td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Lokasi</th>
+          <td><?php echo $complaint['location']; ?></td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Disposisi</th>
+          <td><?php echo $complaint['officer']; ?></td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Progress Aduan</th>
+          <td>
+            <ul>
+              <?php foreach ($histories as $index => $history) { ?>
+                <li style="margin-bottom: 10px;">(<?php echo date('d M Y, H:i', strtotime($history['created_at'])); ?>) <br> <?php echo $history['notes']; ?></li>
               <?php } ?>
-            </td>
-          </tr>
-        </table>
-      </body>
+            </ul>
+          </td>
+        </tr>
+        <tr>
+          <th style="text-align: left;">Lampiran Foto</th>
+          <td>
+            <p>Lampiran Foto Aduan :</p>
+            <?php foreach ($complaint['images'] as $image) { ?>
+              <a href="/simoni/uploads/<?php echo $image['filename']; ?>" target="_blank">
+                <img src="/simoni/uploads/<?php echo $image['filename']; ?>" height="100">
+              </a>
+            <?php } ?>
+
+            <p>Lampiran Foto Penanganan Aduan :</p>
+            <?php foreach ($histories as $history) { ?>
+              <?php foreach ($history['images'] as $image) { ?>
+                <a href="/simoni/uploads/<?php echo $image['filename']; ?>" target="_blank">
+                  <img src="/simoni/uploads/<?php echo $image['filename']; ?>" height="100">
+                </a>
+              <?php } ?>
+            <?php } ?>
+          </td>
+        </tr>
+      </table>
+    </body>
+
     </html>
-    <?php
+<?php
   } else {
     echo "Aduan tidak ditemukan";
   }

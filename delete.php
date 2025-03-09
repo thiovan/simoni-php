@@ -21,7 +21,7 @@ if (isset($_GET['id'])) {
   // Eksekusi query
   if ($stmt->execute()) {
     // Jika berhasil, redirect ke halaman dashboard
-    header("Location: dashboard.php");
+    header("Location: complaint.php");
     exit;
   } else {
     // Jika gagal, tampilkan pesan error
@@ -29,7 +29,7 @@ if (isset($_GET['id'])) {
   }
 } else {
   // Jika tidak ada id aduan, redirect ke halaman dashboard
-  header("Location: dashboard.php");
+  header("Location: complaint.php");
   exit;
 }
 ?>

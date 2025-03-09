@@ -19,12 +19,28 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
   $status_id = $_POST['status_id'];
   $notes = $_POST['notes'];
 
+  // Jika ada data petugas, maka simpan data petugas ke database
+  if (isset($_POST['officer_id'])) {
+    $officer_id = $_POST['officer_id'];
+    $stmt = $conn->prepare("UPDATE complaints SET officer_id = :officer_id, status_id = :status_id WHERE id = :complaint_id");
+    $stmt->bindParam(':officer_id', $officer_id);
+    $stmt->bindParam(':status_id', $status_id);
+    $stmt->bindParam(':complaint_id', $complaint_id);
+    $stmt->execute();
+  } else {
+    $stmt = $conn->prepare("UPDATE complaints SET status_id = :status_id WHERE id = :complaint_id");
+    $stmt->bindParam(':status_id', $status_id);
+    $stmt->bindParam(':complaint_id', $complaint_id);
+    $stmt->execute();
+  }
+
   // Query untuk menyimpan data tindakan ke database
   $stmt = $conn->prepare("INSERT INTO histories (complaint_id, status_id, notes, created_at) VALUES (:complaint_id, :status_id, :notes, NOW())");
   $stmt->bindParam(':complaint_id', $complaint_id);
   $stmt->bindParam(':status_id', $status_id);
   $stmt->bindParam(':notes', $notes);
   $stmt->execute();
+  $history_id = $conn->lastInsertId();
 
   // Jika ada lampiran foto, maka simpan lampiran foto ke direktori dan database
   if (!empty($_FILES['images']['name'][0])) {
@@ -37,7 +53,7 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
       if (!in_array($ext, $allowTypes)) {
         continue;
       }
-      
+
       $imageName = $ticket . '-' . $status_id . '_' . ($i + 1) . '.' . $ext;
       $imagePath = 'uploads/' . $imageName;
 
@@ -45,8 +61,8 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
       move_uploaded_file($images['tmp_name'][$i], $imagePath);
 
       // Simpan lampiran foto ke database
-      $stmt = $conn->prepare("INSERT INTO images (history_id, filename) VALUES (:history_id, :filename)");
-      $stmt->bindParam(':history_id', $conn->lastInsertId());
+      $stmt = $conn->prepare("INSERT INTO images (source_type, source_id, filename) VALUES ('history', :source_id, :filename)");
+      $stmt->bindParam(':source_id', $history_id);
       $stmt->bindParam(':filename', $imageName);
       $stmt->execute();
     }
@@ -60,7 +76,7 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
 // Jika ada input get, maka ambil data aduan berdasarkan ticket yang dikirim
 if (isset($_GET['ticket'])) {
   $ticket = $_GET['ticket'];
-  $stmt = $conn->prepare("SELECT * FROM complaints WHERE ticket = :ticket");
+  $stmt = $conn->prepare("SELECT complaints.*, users.fullname AS officer FROM complaints LEFT JOIN users ON complaints.officer_id = users.id WHERE ticket = :ticket");
   $stmt->bindParam(':ticket', $ticket);
   $stmt->execute();
   $complaint = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -71,10 +87,21 @@ if (isset($_GET['ticket'])) {
     exit;
   }
 
+  // Ambil semua data lampiran foto
+  $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'complaint' AND source_id = :complaint_id");
+  $stmt->bindParam(':complaint_id', $complaint['id']);
+  $stmt->execute();
+  $complaint['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
   // Ambil semua data status
   $stmt = $conn->prepare("SELECT * FROM statuses ORDER BY `order` ASC");
   $stmt->execute();
   $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  // Ambil semua data petugas
+  $stmt = $conn->prepare("SELECT * FROM users WHERE role = 'officer' ORDER BY fullname ASC");
+  $stmt->execute();
+  $officers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   // Ambil semua data tindakan aduan berdasarkan id yang dikirim
   $stmt = $conn->prepare("SELECT h.*, s.name AS status_name FROM histories h LEFT JOIN statuses s ON h.status_id = s.id WHERE h.complaint_id = :complaint_id ORDER BY h.created_at ASC");
@@ -84,18 +111,12 @@ if (isset($_GET['ticket'])) {
 
   // Jika ada data tindakan, maka ambil lampiran foto berdasarkan id tindakan
   foreach ($histories as $key => $history) {
-    $stmt = $conn->prepare("SELECT * FROM images WHERE history_id = :history_id");
+    $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'history' AND source_id = :history_id");
     $stmt->bindParam(':history_id', $history['id']);
     $stmt->execute();
     $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $histories[$key]['images'] = $images;
   }
-
-  // Jika ada data tindakan pertama, maka simpan lampiran foto ke dalam aduan
-  if (isset($histories[0]['images'])) {
-    $complaint['images'] = $histories[0]['images'];
-  }
-  unset($histories[0]);
 } else {
 
   // Jika tidak ada input get, maka redirect ke halaman index
@@ -165,7 +186,7 @@ if (isset($_GET['ticket'])) {
   <!-- / Menampilkan Navigasi -->
 
   <!-- Menampilkan Konten -->
-  <main class="container mt-5">
+  <main class="container my-5">
     <h1 class="text-center display-6 mb-4">Detail Aduan</h1>
 
     <!-- Menampilkan Status Aduan -->
@@ -226,6 +247,10 @@ if (isset($_GET['ticket'])) {
               <div id="collapseOne" class="accordion-collapse collapse show">
                 <div class="accordion-body">
                   <b><?php echo date('d M Y, H:i', strtotime($history['created_at'])); ?> WIB</b>
+                  <p
+                    class="<?php echo $history['status_name'] == 'disposisi' ? 'd-block' : 'd-none' ?> text-danger fw-bold">
+                    <?php echo isset($complaint['officer']) ? 'Disposisi ke: ' . $complaint['officer'] : '' ?>
+                  <p>
                   <p><?php echo htmlspecialchars($history['notes']); ?></p>
 
                   <!-- Menampilkan Lampiran -->
@@ -254,7 +279,7 @@ if (isset($_GET['ticket'])) {
     <!-- / Menampilkan Detail Aduan -->
 
     <!-- Menampilkan Tambah Tindakan -->
-    <?php if (isset($_SESSION['user_id'])) { ?>
+    <?php if (isset($_SESSION['user_role']) && ($_SESSION['user_role'] == 'admin' || $_SESSION['user_id'] == $complaint['officer_id'])) { ?>
       <div class="card mt-4">
         <div class="card-header text-center">
           <h5>Tambah Tindakan</h5>
@@ -269,6 +294,19 @@ if (isset($_GET['ticket'])) {
                 <option value="" disabled selected>Pilih tindakan</option>
                 <?php foreach ($statuses as $status) { ?>
                   <option value="<?php echo $status['id']; ?>" <?php echo in_array($status['name'], array_column($histories, 'status_name')) ? 'disabled' : ''; ?>><?php echo ucwords($status['name']); ?></option>
+                <?php } ?>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="action" class="form-label">Pilih Disposisi</label>
+              <select class="form-select" name="officer_id" required <?php echo isset($complaint['officer_id']) ? 'disabled' : ''; ?>>
+                <option value="" disabled selected>Pilih disposisi</option>
+                <?php foreach ($officers as $officer) { ?>
+                  <option
+                    value="<?php echo $officer['id']; ?>"
+                    <?php echo isset($complaint['officer_id']) && $complaint['officer_id'] == $officer['id'] ? 'selected' : ''; ?>>
+                    <?php echo ucwords($officer['fullname']); ?>
+                  </option>
                 <?php } ?>
               </select>
             </div>
@@ -291,10 +329,10 @@ if (isset($_GET['ticket'])) {
   <!-- / Menampilkan Konten -->
 
   <!-- Menampilkan Footer -->
-  <footer class="fixed-bottom w-100">
+  <footer class="w-100">
     <ul class="nav border-bottom pb-3 mb-3">
     </ul>
-    <p class="text-center text-body-secondary">Copyright &copy; 2025. Developed by <?php echo APP_AUTHOR; ?></p>
+    <p class="text-center text-body-secondary mb-0 pb-3">Copyright &copy; 2025. Developed by <?php echo APP_AUTHOR; ?></p>
   </footer>
   <!-- / Menampilkan Footer -->
 

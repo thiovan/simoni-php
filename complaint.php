@@ -11,58 +11,26 @@ try {
   die("Koneksi gagal: " . $e->getMessage());
 }
 
-// Ambil jumlah aduan
+// Ambil semua data aduan dari tabel complaints
 if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints");
+  $stmt = $conn->prepare("SELECT * FROM complaints");
 } else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE officer_id = :officer_id");
+  $stmt = $conn->prepare("SELECT * FROM complaints WHERE officer_id = :officer_id");
   $stmt->bindParam(':officer_id', $_SESSION['user_id']);
 }
 $stmt->execute();
-$complaint_total = $stmt->fetchColumn();
+$complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Ambil jumlah aduan yang masih dalam proses penanganan
-if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3)");
-} else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3) AND officer_id = :officer_id");
-  $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-}
-$stmt->execute();
-$complaint_pending = $stmt->fetchColumn();
-
-// Ambil jumlah aduan yang sudah selesai
-if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4");
-} else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4 AND officer_id = :officer_id");
-  $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-}
-$stmt->execute();
-$complaint_closed = $stmt->fetchColumn();
-
-// Ambil data aduan terakhir 6 bulan
-$currentYear = date('Y');
-$currentMonth = date('n');
-$complaint_last_6_month = array();
-for ($i = 0; $i < 6; $i++) {
-  if ($_SESSION['user_role'] == 'admin') {
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year");
-  } else {
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE MONTH(created_at) = :month AND YEAR(created_at) = :year AND officer_id = :officer_id");
-    $stmt->bindParam(':officer_id', $_SESSION['user_id']);
-  }
-  $stmt->bindParam(':month', $currentMonth);
-  $stmt->bindParam(':year', $currentYear);
+// Looping untuk mengambil data terakhir dari setiap aduan
+for ($i = 0; $i < count($complaints); $i++) {
+  // Ambil data terakhir dari setiap aduan
+  $stmt = $conn->prepare("SELECT h.created_at AS history_created_at, s.name AS status_name FROM histories h JOIN statuses s ON h.status_id = s.id WHERE h.complaint_id = :complaint_id ORDER BY h.created_at DESC LIMIT 1");
+  $stmt->bindParam(':complaint_id', $complaints[$i]['id']);
   $stmt->execute();
-  $months = array("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember");
-  $monthName = $months[$currentMonth - 1];
-  $complaint_last_6_month[$monthName . ' ' . $currentYear] = $stmt->fetchColumn();
-  $currentMonth--;
-  if ($currentMonth == 0) {
-    $currentMonth = 12;
-    $currentYear--;
-  }
+  $result = $stmt->fetch(PDO::FETCH_ASSOC);
+  // Simpan data terakhir ke dalam array $complaints
+  $complaints[$i]['last_status'] = $result['status_name'];
+  $complaints[$i]['last_status_date'] = $result['history_created_at'];
 }
 
 ?>
@@ -95,13 +63,13 @@ for ($i = 0; $i < 6; $i++) {
     <hr>
     <ul class="nav nav-pills flex-column mb-auto">
       <li class="nav-item">
-        <a href="dashboard.php" class="nav-link active bg-danger" aria-current="page">
+        <a href="dashboard.php" class="nav-link link-body-emphasis" aria-current="page">
           <i class="bi bi-house-door pe-none me-2"></i>
           Dashboard
         </a>
       </li>
       <li>
-        <a href="complaint.php" class="nav-link link-body-emphasis">
+        <a href="complaint.php" class="nav-link active bg-danger">
           <i class="bi bi-inboxes pe-none me-2"></i>
           Kelola Aduan
         </a>
@@ -165,44 +133,79 @@ for ($i = 0; $i < 6; $i++) {
     <!-- Menampilkan Konten -->
     <main class="container mt-5 min-vh-100">
 
-      <div class="card my-3 shadow-sm">
+      <div class="card my-4 shadow-sm">
         <div class="card-body">
-          <h4 class="card-title text-center mb-0">DASHBOARD</h4>
+          <h4 class="card-title text-center mb-0">KELOLA ADUAN</h4>
         </div>
       </div>
 
-      <div class="row">
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Masuk</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_total; ?></p>
+      <div class="card my-3">
+        <div class="card-header">
+          <form action="export.php" method="get">
+            <div class="row">
+              <div class="col col-12 col-md-6">
+                <label class="form-label">Dari Tanggal</label>
+                <input type="date" class="form-control" name="from" required>
+              </div>
+              <div class="col col-12 col-md-6">
+                <label class="form-label">Sampai Tanggal</label>
+                <input type="date" class="form-control" name="to" required>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Diproses</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_pending; ?></p>
+            <div class="row mt-3">
+              <div class="col col-12">
+                <button type="submit" class="btn btn-primary btn-secondary w-100">Export Laporan</button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
-
-        <div class="col col-12 col-md-4">
-          <div class="card my-3 shadow-sm">
-            <div class="card-body text-center">
-              <h5 class="card-title">Aduan Selesai</h5>
-              <p class="display-4 fw-bold"><?php echo $complaint_closed; ?></p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card my-3 shadow-sm">
         <div class="card-body">
-          <canvas class="w-100" id="chart" style="height: 350px;"></canvas>
+          <div class="table-responsive">
+            <table class="table table-bordered mt-3">
+              <thead>
+                <tr>
+                  <th class="text-center align-middle">No</th>
+                  <th class="text-center align-middle">Waktu</th>
+                  <th class="text-center align-middle">Kode Tiket</th>
+                  <th class="text-center align-middle">Deskripsi</th>
+                  <th class="text-center align-middle">Lokasi</th>
+                  <th class="text-center align-middle">Status Terakhir</th>
+                  <th class="text-center align-middle">Opsi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($complaints as $index => $complaint) { ?>
+                  <tr>
+                    <td class="text-center"><?php echo $index + 1; ?></td>
+                    <td class="text-center"><?php echo date('d M Y, H:i', strtotime($complaint['last_status_date'])); ?> WIB</td>
+                    <td class="text-center"><?php echo htmlspecialchars($complaint['ticket']); ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars(mb_strimwidth($complaint['description'], 0, 50, '...')); ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars(mb_strimwidth($complaint['location'], 0, 50, '...')); ?></td>
+                    <td class="text-center"><?php echo ucwords($complaint['last_status']); ?></td>
+                    <td class="text-center">
+
+                      <div class="row row-cols-2 g-2">
+                        <div class="col col-12 col-md-6">
+                          <a href="detail.php?ticket=<?php echo $complaint['ticket']; ?>" class="btn btn-primary btn-sm w-100" target="_blank"><i class="bi bi-pencil"></i> Input</a>
+                        </div>
+                        <div class="col col-12 col-md-6">
+                          <a href="https://api.whatsapp.com/send?phone=<?php echo preg_replace('/^0/', '62', $complaint['whatsapp']); ?>&text=Halo%2C+saya+menghubungi+anda+terkait+aduan+<?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-success btn-sm w-100" target="_blank"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+                        </div>
+                        <div class="col col-12 col-md-6">
+                          <a href="mailto:<?php echo $complaint['email']; ?>?subject=Aduan: <?php echo htmlspecialchars($complaint['ticket']); ?>" class="btn btn-info btn-sm w-100" target="_blank"><i class="bi bi-envelope"></i> Email</a>
+                        </div>
+                        <div class="col col-12 col-md-6">
+                          <a href="print.php/?id=<?php echo $complaint['id']; ?>" class="btn btn-secondary btn-sm w-100" target="_blank"><i class="bi bi-printer"></i> Cetak</a>
+                        </div>
+                      </div>
+
+                      <a href="delete.php?id=<?php echo $complaint['id']; ?>" class="btn btn-danger btn-sm w-100 mt-2" onclick="return confirm('Apakah Anda yakin ingin menghapus data aduan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                    </td>
+                  </tr>
+                <?php } ?>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -236,28 +239,6 @@ for ($i = 0; $i < 6; $i++) {
           toggle: false
         });
         collapse.show();
-      }
-    });
-
-    const ctx = document.getElementById('chart');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: <?php echo json_encode(array_keys($complaint_last_6_month)); ?>,
-        datasets: [{
-          label: 'Jumlah Aduan',
-          data: <?php echo json_encode(array_values($complaint_last_6_month)); ?>,
-          borderWidth: 1,
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          borderColor: 'rgba(255, 99, 132, 1)'
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
       }
     });
   </script>

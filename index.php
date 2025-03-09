@@ -19,6 +19,8 @@ if (isset($_GET['logout'])) {
 // Fungsi untuk membuat aduan baru
 function createComplaint($conn, $whatsapp, $email, $description, $location, $images)
 {
+  $conn->beginTransaction();
+
   // Membuat kode tiket unik
   do {
     $ticket = "SMN-" . sprintf("%06d", mt_rand(0, 999999)); // Membuat format tiket dengan angka acak
@@ -37,11 +39,14 @@ function createComplaint($conn, $whatsapp, $email, $description, $location, $ima
   $stmt->execute();
   $complaint_id = $conn->lastInsertId(); // Dapatkan ID aduan yang baru dimasukkan
 
-  // Simpan data riwayat aduan ke database
-  $stmt = $conn->prepare("INSERT INTO histories (complaint_id, created_at) VALUES (:complaint_id, NOW())");
+  // Tambahkan entri riwayat untuk status awal
+  $status_id = "1"; // Anggap 1 adalah ID untuk status awal
+  $notes = "Terima kasih telah menggunakan Si Moni (Sistem Monitoring Aduan Gajahmungkur). Aduan anda akan segera kami tindak lanjuti.";
+  $stmt = $conn->prepare("INSERT INTO histories (complaint_id, status_id, notes, created_at) VALUES (:complaint_id, :status_id, :notes, NOW())");
   $stmt->bindParam(':complaint_id', $complaint_id);
+  $stmt->bindParam(':status_id', $status_id);
+  $stmt->bindParam(':notes', $notes);
   $stmt->execute();
-  $history_id = $conn->lastInsertId(); // Dapatkan ID riwayat yang baru dimasukkan
 
   // Simpan lampiran foto
   if (!empty($images['name'][0])) {
@@ -61,21 +66,14 @@ function createComplaint($conn, $whatsapp, $email, $description, $location, $ima
       move_uploaded_file($images['tmp_name'][$i], $imagePath);
 
       // Simpan lampiran foto ke database
-      $stmt = $conn->prepare("INSERT INTO images (history_id, filename) VALUES (:history_id, :filename)");
-      $stmt->bindParam(':history_id', $history_id);
+      $stmt = $conn->prepare("INSERT INTO images (source_type, source_id, filename) VALUES ('complaint', :source_id, :filename)");
+      $stmt->bindParam(':source_id', $complaint_id);
       $stmt->bindParam(':filename', $imageName);
       $stmt->execute();
     }
   }
 
-  // Tambahkan entri riwayat untuk status awal
-  $status_id = "1"; // Anggap 1 adalah ID untuk status awal
-  $notes = "Terima kasih telah menggunakan Si Moni (Sistem Monitoring Aduan Gajahmungkur). Aduan anda akan segera kami tindak lanjuti.";
-  $stmt = $conn->prepare("INSERT INTO histories (complaint_id, status_id, notes, created_at) VALUES (:complaint_id, :status_id, :notes, NOW())");
-  $stmt->bindParam(':complaint_id', $complaint_id);
-  $stmt->bindParam(':status_id', $status_id);
-  $stmt->bindParam(':notes', $notes);
-  $stmt->execute();
+  $conn->commit();
 
   return $ticket; // Kembalikan kode tiket
 }
@@ -111,7 +109,7 @@ if (isset($_POST['whatsapp']) && isset($_POST['email']) && isset($_POST['descrip
   <title><?php echo APP_NAME; ?></title>
 </head>
 
-<body>
+<body class="min-vh-100">
 
   <!-- Menampilkan Navigasi -->
   <nav class="navbar bg-body-tertiary">
@@ -158,7 +156,7 @@ if (isset($_POST['whatsapp']) && isset($_POST['email']) && isset($_POST['descrip
   <!-- / Menampilkan Navigasi -->
 
   <!-- Menampilkan Konten -->
-  <main class="container mt-5">
+  <main class="container my-5">
 
     <!-- Menampilkan Logo dan Judul Aplikasi -->
     <div class="text-center">
@@ -182,7 +180,7 @@ if (isset($_POST['whatsapp']) && isset($_POST['email']) && isset($_POST['descrip
             <button type="submit" class="btn btn-danger px-4"><i class="bi bi-search"></i> Lacak</button>
           </div>
         </form>
-        <small class="text-danger">Contoh: SML-123456</small>
+        <small class="text-danger">Contoh: SMN-123456</small>
       </div>
     </div>
     <!-- / Menampilkan Lacak Tiket Aduan -->
@@ -225,10 +223,10 @@ if (isset($_POST['whatsapp']) && isset($_POST['email']) && isset($_POST['descrip
   <!-- / Menampilkan Konten -->
 
   <!-- Menampilkan Footer -->
-  <footer class="fixed-bottom w-100">
+  <footer>
     <ul class="nav border-bottom pb-3 mb-3">
     </ul>
-    <p class="text-center text-body-secondary">Copyright &copy; 2025. Developed by <?php echo APP_AUTHOR; ?></p>
+    <p class="text-center text-body-secondary mb-0 pb-3">Copyright &copy; 2025. Developed by <?php echo APP_AUTHOR; ?></p>
   </footer>
   <!-- / Menampilkan Footer -->
 
