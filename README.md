@@ -43,7 +43,7 @@ Struktur file website Si Moni terdiri dari beberapa file, yaitu:
 Berikut adalah flowchart dari website Si Moni:
 
 <a href="screenshot/flowchart.jpg" target="_blank">
-    <img src="screenshot/flowchart.jpg" alt="Flowchart" width="200">
+    <img src="screenshot/flowchart.jpg" alt="Flowchart" width="800">
 </a>
 
 ## Data Flow Diagram (DFD)
@@ -51,7 +51,7 @@ Berikut adalah flowchart dari website Si Moni:
 Berikut adalah DFD dari website Si Moni:
 
 <a href="screenshot/dfd.jpg" target="_blank">
-    <img src="screenshot/dfd.jpg" alt="DFD" width="500">
+    <img src="screenshot/dfd.jpg" alt="DFD" width="800">
 </a>
 
 ## Entity Relationship Diagram (ERD)
@@ -59,7 +59,7 @@ Berikut adalah DFD dari website Si Moni:
 Berikut adalah ERD dari database Si Moni:
 
 <a href="screenshot/erd.jpg" target="_blank">
-    <img src="screenshot/erd.jpg" alt="ERD" width="200">
+    <img src="screenshot/erd.jpg" alt="ERD" width="800">
 </a>
 
 ## Instalasi
