@@ -104,7 +104,7 @@ if (isset($_GET['ticket'])) {
   $officers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   // Ambil semua data tindakan aduan berdasarkan id yang dikirim
-  $stmt = $conn->prepare("SELECT h.*, s.name AS status_name FROM histories h LEFT JOIN statuses s ON h.status_id = s.id WHERE h.complaint_id = :complaint_id ORDER BY h.created_at ASC");
+  $stmt = $conn->prepare("SELECT h.*, s.name AS status_name, s.order AS status_order FROM histories h LEFT JOIN statuses s ON h.status_id = s.id WHERE h.complaint_id = :complaint_id ORDER BY h.created_at ASC");
   $stmt->bindParam(':complaint_id', $complaint['id']);
   $stmt->execute();
   $histories = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -195,6 +195,7 @@ if (isset($_GET['ticket'])) {
         <h5 class="text-center mb-3">Status Aduan</h5>
         <div class="stepper-wrapper">
           <?php foreach ($statuses as $status) { ?>
+            <?php if ($status['order'] < 1) continue; ?>
             <div class="stepper-item <?php echo in_array($status['name'], array_column($histories, 'status_name')) ? 'active' : ''; ?>">
               <div class="step-counter"><?php echo ucwords($status['order']); ?></div>
               <div class="step-name"><?php echo ucwords($status['name']); ?></div>
@@ -292,32 +293,60 @@ if (isset($_GET['ticket'])) {
               <label for="action" class="form-label">Pilih Tindakan</label>
               <select class="form-select" name="status_id" required>
                 <option value="" disabled selected>Pilih tindakan</option>
-                <?php foreach ($statuses as $status) { ?>
-                  <option value="<?php echo $status['id']; ?>" <?php echo in_array($status['name'], array_column($histories, 'status_name')) ? 'disabled' : ''; ?>><?php echo ucwords($status['name']); ?></option>
-                <?php } ?>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="action" class="form-label">Pilih Disposisi</label>
-              <select class="form-select" name="officer_id" required <?php echo isset($complaint['officer_id']) ? 'disabled' : ''; ?>>
-                <option value="" disabled selected>Pilih disposisi</option>
-                <?php foreach ($officers as $officer) { ?>
+                <?php
+
+                foreach ($statuses as $status) {
+                  // Jangan tampilkan "menunggu verifikasi"
+                  if ($status['name'] === 'menunggu verifikasi') continue;
+
+                  // Cek apakah status ini sudah ada di history
+                  $inHistory = in_array($status['name'], array_column($histories, 'status_name'));
+
+                  // Cek apakah status order tepat satu tingkat setelah lastOrder
+                  $isNextStep = ($status['order'] == end($histories)['status_order'] + 1);
+
+                  // Atur disabled atau tidak
+                  $disabled = '';
+                  if ($inHistory || !$isNextStep) {
+                    $disabled = 'disabled';
+
+                    // Jika status ini adalah "ditolak" dan sebelumnya status terakhir adalah "menunggu verifikasi", maka status ini bisa diubah
+                    if ($status['name'] == 'ditolak' && end($histories)['status_name'] == 'menunggu verifikasi') {
+                      $disabled = '';
+                    }
+                  }
+                ?>
                   <option
-                    value="<?php echo $officer['id']; ?>"
-                    <?php echo isset($complaint['officer_id']) && $complaint['officer_id'] == $officer['id'] ? 'selected' : ''; ?>>
-                    <?php echo ucwords($officer['fullname']); ?>
+                    value="<?php echo $status['id']; ?>" <?php echo $disabled; ?>><?php echo ucwords($status['name']); ?>
                   </option>
                 <?php } ?>
               </select>
             </div>
+            <?php if (end($histories)['status_order'] >= 1) { ?>
+              <div class="mb-3">
+                <label for="action" class="form-label">Pilih Disposisi</label>
+                <select class="form-select" name="officer_id" required <?php echo isset($complaint['officer_id']) ? 'disabled' : ''; ?>>
+                  <option value="" disabled selected>Pilih disposisi</option>
+                  <?php foreach ($officers as $officer) { ?>
+                    <option
+                      value="<?php echo $officer['id']; ?>"
+                      <?php echo isset($complaint['officer_id']) && $complaint['officer_id'] == $officer['id'] ? 'selected' : ''; ?>>
+                      <?php echo ucwords($officer['fullname']); ?>
+                    </option>
+                  <?php } ?>
+                </select>
+              </div>
+            <?php } ?>
             <div class="mb-3">
               <label for="notes" class="form-label">Catatan</label>
               <textarea class="form-control" name="notes" rows="3" required></textarea>
             </div>
-            <div class="mb-3">
-              <label for="file" class="form-label">Lampiran Foto</label>
-              <input type="file" class="form-control" name="images[]" accept="image/*" multiple>
-            </div>
+            <?php if (end($histories)['status_order'] >= 2) { ?>
+              <div class="mb-3">
+                <label for="file" class="form-label">Lampiran Foto</label>
+                <input type="file" class="form-control" name="images[]" accept="image/*" multiple>
+              </div>
+            <?php } ?>
             <button type="submit" class="btn btn-danger w-100"><i class="bi bi-plus-circle"></i> &nbsp;Simpan Tindakan</button>
           </form>
         </div>
