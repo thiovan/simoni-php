@@ -61,8 +61,8 @@ if (isset($_POST['ticket']) && isset($_POST['complaint_id']) && isset($_POST['st
       move_uploaded_file($images['tmp_name'][$i], $imagePath);
 
       // Simpan lampiran foto ke database
-      $stmt = $conn->prepare("INSERT INTO images (source_type, source_id, filename) VALUES ('history', :source_id, :filename)");
-      $stmt->bindParam(':source_id', $history_id);
+      $stmt = $conn->prepare("INSERT INTO history_images (history_id, filename) VALUES (:history_id, :filename)");
+      $stmt->bindParam(':history_id', $history_id);
       $stmt->bindParam(':filename', $imageName);
       $stmt->execute();
     }
@@ -88,7 +88,7 @@ if (isset($_GET['ticket'])) {
   }
 
   // Ambil semua data lampiran foto
-  $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'complaint' AND source_id = :complaint_id");
+  $stmt = $conn->prepare("SELECT * FROM complaint_images WHERE complaint_id = :complaint_id");
   $stmt->bindParam(':complaint_id', $complaint['id']);
   $stmt->execute();
   $complaint['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -111,7 +111,7 @@ if (isset($_GET['ticket'])) {
 
   // Jika ada data tindakan, maka ambil lampiran foto berdasarkan id tindakan
   foreach ($histories as $key => $history) {
-    $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'history' AND source_id = :history_id");
+    $stmt = $conn->prepare("SELECT * FROM history_images WHERE history_id = :history_id");
     $stmt->bindParam(':history_id', $history['id']);
     $stmt->execute();
     $images = $stmt->fetchAll(PDO::FETCH_ASSOC);

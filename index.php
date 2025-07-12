@@ -66,8 +66,8 @@ function createComplaint($conn, $whatsapp, $email, $description, $location, $ima
       move_uploaded_file($images['tmp_name'][$i], $imagePath);
 
       // Simpan lampiran foto ke database
-      $stmt = $conn->prepare("INSERT INTO images (source_type, source_id, filename) VALUES ('complaint', :source_id, :filename)");
-      $stmt->bindParam(':source_id', $complaint_id);
+      $stmt = $conn->prepare("INSERT INTO complaint_images (complaint_id, filename) VALUES (:complaint_id, :filename)");
+      $stmt->bindParam(':complaint_id', $complaint_id);
       $stmt->bindParam(':filename', $imageName);
       $stmt->execute();
     }

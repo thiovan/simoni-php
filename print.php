@@ -21,8 +21,8 @@ if (isset($_GET['id'])) {
   $complaint = $stmt->fetch(PDO::FETCH_ASSOC);
 
   // Buat query untuk mengambil data lampiran foto
-  $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'complaint' AND source_id = :source_id");
-  $stmt->bindParam(':source_id', $complaint['id']);
+  $stmt = $conn->prepare("SELECT * FROM complaint_images WHERE complaint_id = :complaint_id");
+  $stmt->bindParam(':complaint_id', $complaint['id']);
   $stmt->execute();
   $complaint['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -36,8 +36,8 @@ if (isset($_GET['id'])) {
 
     foreach ($histories as $key => $history) {
       // Buat query untuk mengambil data lampiran foto
-      $stmt = $conn->prepare("SELECT * FROM images WHERE source_type = 'history' AND source_id = :source_id");
-      $stmt->bindParam(':source_id', $history['id']);
+      $stmt = $conn->prepare("SELECT * FROM history_images WHERE history_id = :history_id");
+      $stmt->bindParam(':history_id', $history['id']);
       $stmt->execute();
       $histories[$key]['images'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
