@@ -70,6 +70,7 @@ if (isset($_GET['id'])) {
     </head>
 
     <body>
+      <img src="/simoni/assets/images/kop-surat.png" width="100%">
       <h1>Rincian Aduan</h1>
       <table>
         <tr>
@@ -127,6 +128,31 @@ if (isset($_GET['id'])) {
           </td>
         </tr>
       </table>
+
+      <br>
+      <br>
+
+      <table width="100%" style="border: none;">
+        <tr>
+          <td width="50%" style="border: none;">
+            <div style="text-align: center;">
+              <p>CAMAT</p>
+              <br>
+              <br>
+              <p>_______________________</p>
+            </div>
+          </td>
+          <td width="50%" style="border: none;">
+            <div style="text-align: center;">
+              <p><?php echo strtoupper($complaint['officer']); ?></p>
+              <br>
+              <br>
+              <p>_______________________</p>
+            </div>
+          </td>
+        </tr>
+      </table>
+
     </body>
 
     </html>
