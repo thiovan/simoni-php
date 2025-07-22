@@ -199,7 +199,9 @@ for ($i = 0; $i < count($complaints); $i++) {
                         </div>
                       </div>
 
-                      <a href="delete.php?id=<?php echo $complaint['id']; ?>" class="btn btn-danger btn-sm w-100 mt-2" onclick="return confirm('Apakah Anda yakin ingin menghapus data aduan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                      <?php if (in_array($complaint['status_id'], [null, 1, 2, 3, 4])) { ?>
+                        <a href="delete.php?id=<?php echo $complaint['id']; ?>" class="btn btn-danger btn-sm w-100 mt-2" onclick="return confirm('Apakah Anda yakin ingin menghapus data aduan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                      <?php } ?>
                     </td>
                   </tr>
                 <?php } ?>
