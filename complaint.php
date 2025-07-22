@@ -13,9 +13,9 @@ try {
 
 // Ambil semua data aduan dari tabel complaints
 if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT * FROM complaints");
+  $stmt = $conn->prepare("SELECT * FROM complaints ORDER BY created_at DESC");
 } else {
-  $stmt = $conn->prepare("SELECT * FROM complaints WHERE officer_id = :officer_id");
+  $stmt = $conn->prepare("SELECT * FROM complaints WHERE officer_id = :officer_id ORDER BY created_at DESC");
   $stmt->bindParam(':officer_id', $_SESSION['user_id']);
 }
 $stmt->execute();
