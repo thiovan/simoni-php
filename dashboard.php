@@ -23,9 +23,9 @@ $complaint_total = $stmt->fetchColumn();
 
 // Ambil jumlah aduan yang masih dalam proses penanganan
 if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3)");
+  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3, 4, 5)");
 } else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3) AND officer_id = :officer_id");
+  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (1, 2, 3, 4, 5) AND officer_id = :officer_id");
   $stmt->bindParam(':officer_id', $_SESSION['user_id']);
 }
 $stmt->execute();
@@ -33,9 +33,9 @@ $complaint_pending = $stmt->fetchColumn();
 
 // Ambil jumlah aduan yang sudah selesai
 if ($_SESSION['user_role'] == 'admin') {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4");
+  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (2, 6)");
 } else {
-  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id = 4 AND officer_id = :officer_id");
+  $stmt = $conn->prepare("SELECT COUNT(*) FROM complaints WHERE status_id IN (2, 6) AND officer_id = :officer_id");
   $stmt->bindParam(':officer_id', $_SESSION['user_id']);
 }
 $stmt->execute();
