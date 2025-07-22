@@ -21,6 +21,28 @@ $stmt = $conn->prepare("SELECT * FROM users");
 $stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Reset password
+if (isset($_POST['type']) && $_POST['type'] == 'reset_password') {
+  // Ambil data dari form
+  $user_id = $_POST['user_id'];
+  $password = $_POST['password'];
+
+  // Enkripsi password
+  $password = password_hash($password, PASSWORD_DEFAULT);
+
+  // Simpan data pengguna ke database
+  $stmt = $conn->prepare("UPDATE users SET password = :password WHERE id = :user_id");
+  $stmt->bindParam(':password', $password);
+  $stmt->bindParam(':user_id', $user_id);
+  $stmt->execute();
+
+  // Redirect ke halaman user.php
+  header("Location: user.php");
+  exit();
+}
+
+
+// Tambah pengguna
 if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['fullname']) && isset($_POST['role'])) {
   // Ambil data dari form
   $username = $_POST['username'];
@@ -33,7 +55,7 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['full
 
   // Simpan data pengguna ke database
   $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, role) VALUES (:username, :password, :fullname, :role)");
-  $stmt->bindParam(':username', $username); 
+  $stmt->bindParam(':username', $username);
   $stmt->bindParam(':password', $password);
   $stmt->bindParam(':fullname', $fullname);
   $stmt->bindParam(':role', $role);
@@ -193,6 +215,7 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['full
                   <th class="text-center align-middle">Username</th>
                   <th class="text-center align-middle">Nama</th>
                   <th class="text-center align-middle">Status</th>
+                  <th class="text-center align-middle">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -203,6 +226,15 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['full
                     <td class="text-center"><?php echo htmlspecialchars($user['fullname']); ?></td>
                     <td class="text-center">
                       <span class="badge rounded-pill text-bg-danger"><?php echo htmlspecialchars($user['role']); ?></span>
+                    </td>
+                    <td class="text-center">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalResetPassword"
+                        onclick="document.querySelector('#modalResetPassword input[name=user_id]').value = '<?php echo $user['id']; ?>'; document.querySelector('#modalResetPassword input[name=username]').value = '<?php echo htmlspecialchars($user['username']); ?>';">
+                        Reset Password</button>
                     </td>
                   </tr>
                 <?php } ?>
@@ -223,12 +255,47 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['full
     </footer>
     <!-- / Menampilkan Footer -->
 
+    <!-- Menampilkan Modal -->
+    <div id="modalResetPassword" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form method="POST" action="">
+            <div class="modal-header">
+              <h5 class="modal-title">Ubah Password</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" name="type" value="reset_password">
+              <input type="hidden" name="user_id">
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input name="username" type="text" class="form-control" disabled>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password Baru</label>
+                <input name="password" type="password" class="form-control" placeholder="******">
+              </div>
+
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const collapseElement = document.getElementById('sidebar');
       const isMobile = window.matchMedia('(max-width: 767.98px)').matches;
+      // const modalResetPassword = new bootstrap.Modal(document.getElementById('modalResetPassword'));
+      // modalResetPassword.show();
+
 
       if (isMobile) {
         // Collapse the element on mobile
